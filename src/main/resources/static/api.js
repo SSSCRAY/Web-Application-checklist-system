@@ -1,4 +1,4 @@
-const API = 'http://localhost:8080';
+const API = 'https://web-application-checklist-system-production.up.railway.app';
 
 function getToken() { return localStorage.getItem('token'); }
 function getRole()  { return localStorage.getItem('role'); }
