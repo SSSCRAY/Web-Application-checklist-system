@@ -4,7 +4,6 @@
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Чек-лист — Coffee Manager</title>
     <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="nav-mobile.css">
     <style>
         .back { display:inline-flex; align-items:center; gap:8px; font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--text-dim); text-decoration:none; margin-bottom:36px; transition:color .2s; }
         .back:hover { color:var(--purple); }
@@ -21,14 +20,19 @@
         .add-form.show { display:block; }
         .add-row { display:flex; gap:10px; }
         .add-row input { flex:1; }
+        @media(max-width:640px) {
+            .cl-header { flex-direction:column; gap:12px; }
+            .add-row { flex-wrap:wrap; }
+            .add-row input { min-width:0; }
+            .task-btn-del { opacity:1; }
+        }
     </style>
 </head>
 <body>
 <canvas id="particles"></canvas>
-
 <nav>
     <div class="nav-logo">Coffee Manager</div>
-    <button class="burger" id="burger" onclick="toggleNav()" aria-label="Меню"><span></span><span></span><span></span></button>
+    <button class="burger" id="burger" onclick="toggleNav()"><span></span><span></span><span></span></button>
     <div class="nav-right" id="navRight">
         <div class="nav-links">
             <a href="checklists.html" class="nav-link active">Чек-листы</a>
@@ -39,10 +43,8 @@
         <button class="btn-logout" onclick="logout()">Выйти</button>
     </div>
 </nav>
-
 <main>
     <a href="checklists.html" class="back anim">← Назад</a>
-
     <div class="cl-header anim anim-1">
         <div>
             <h1 class="page-title" id="clTitle">Загрузка...</h1>
@@ -52,12 +54,10 @@
             <button class="btn btn-ghost btn-sm" onclick="toggleAdd()">+ Задача</button>
         </div>
     </div>
-
     <div class="progress-wrap anim anim-2">
         <div class="progress-text" id="progressText">0 из 0 задач выполнено</div>
         <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
     </div>
-
     <div class="add-form" id="addForm">
         <div class="add-row">
             <input type="text" id="newTask" placeholder="Описание задачи...">
@@ -65,32 +65,12 @@
             <button class="btn btn-ghost btn-sm" onclick="toggleAdd()">Отмена</button>
         </div>
     </div>
-
     <div class="tasks-list" id="tasksList"></div>
-
     <div class="archive-section anim anim-3">
-        <button class="btn btn-ghost" id="btnArchive" onclick="submitArchive()">Отправить в архив</button>
+        <button class="btn btn-ghost" onclick="submitArchive()">Отправить в архив</button>
     </div>
 </main>
-
 <div class="toast" id="toast"></div>
-
-<script>
-    function toggleNav(){
-        const nav=document.getElementById("navRight");
-        const burger=document.getElementById("burger");
-        nav.classList.toggle("open");
-        burger.classList.toggle("open");
-    }
-    document.addEventListener("click",function(e){
-        const nav=document.getElementById("navRight");
-        const burger=document.getElementById("burger");
-        if(nav<script src="api.js"></script><script src="api.js"></script>burger<script src="api.js"></script><script src="api.js"></script>!nav.contains(e.target)<script src="api.js"></script><script src="api.js"></script>!burger.contains(e.target)){
-nav.classList.remove("open");
-burger.classList.remove("open");
-}
-});
-</script>
 <script src="api.js"></script>
 <script>
     guardAuth();
@@ -101,44 +81,52 @@ burger.classList.remove("open");
         document.getElementById('navArchive').style.display = '';
         document.getElementById('adminBtns').style.display = 'flex';
     }
+    function toggleNav() {
+        document.getElementById('navRight').classList.toggle('open');
+        document.getElementById('burger').classList.toggle('open');
+    }
+    document.addEventListener('click', function(e) {
+        const nav = document.getElementById('navRight');
+        const burger = document.getElementById('burger');
+        if (nav && burger && !nav.contains(e.target) && !burger.contains(e.target)) {
+            nav.classList.remove('open');
+            burger.classList.remove('open');
+        }
+    });
 
     const params = new URLSearchParams(location.search);
     const clId = parseInt(params.get('id'));
     if (!clId) location.href = 'checklists.html';
 
-    let checklist = null;
-
     async function load() {
-        checklist = await api.get(`/api/checklists/${clId}`);
-        if (!checklist) return;
-        document.title = checklist.title + ' — Coffee Manager';
-        document.getElementById('clTitle').textContent = checklist.title;
-        document.getElementById('clId').textContent = `#${String(clId).padStart(3,'0')}`;
-        renderTasks(checklist.tasks || []);
+        const cl = await api.get('/api/checklists/' + clId);
+        if (!cl) return;
+        document.title = cl.title + ' — Coffee Manager';
+        document.getElementById('clTitle').textContent = cl.title;
+        document.getElementById('clId').textContent = '#' + String(clId).padStart(3,'0');
+        renderTasks(cl.tasks || []);
     }
 
     function renderTasks(tasks) {
         const done  = tasks.filter(t => t.completed).length;
         const total = tasks.length;
         const pct   = total ? Math.round(done/total*100) : 0;
-        document.getElementById('progressText').textContent = `${done} из ${total} задач выполнено — ${pct}%`;
+        document.getElementById('progressText').textContent = done + ' из ' + total + ' задач выполнено — ' + pct + '%';
         document.getElementById('progressFill').style.width = pct + '%';
-
         const list = document.getElementById('tasksList');
         if (!tasks.length) {
-            list.innerHTML = `<div class="empty"><span class="icon">📋</span><p>Задач пока нет</p></div>`;
+            list.innerHTML = '<div class="empty"><span class="icon">📋</span><p>Задач пока нет</p></div>';
             return;
         }
-
         const isAdmin = getRole() === 'ADMIN';
-        list.innerHTML = tasks.map((t, i) => `
-        <div class="task-item${t.completed ? ' done' : ''}" id="task-${t.id}" style="animation:fadeUp .4s ${i*.04}s both">
-            <div class="task-order">${String(i + 1).padStart(2,'0')}</div>
-            <div class="task-check${t.completed ? ' checked' : ''}" onclick="toggle(${t.id})"></div>
-            <div class="task-desc">${escHtml(t.description)}</div>
-            ${isAdmin ? `<button class="task-btn-del" onclick="delTask(${t.id})" title="Удалить">✕</button>` : ''}
-        </div>
-    `).join('');
+        list.innerHTML = tasks.map((t, i) =>
+            '<div class="task-item' + (t.completed ? ' done' : '') + '" id="task-' + t.id + '" style="animation:fadeUp .4s ' + (i*.04) + 's both">' +
+            '<div class="task-order">' + String(i+1).padStart(2,'0') + '</div>' +
+            '<div class="task-check' + (t.completed ? ' checked' : '') + '" onclick="toggle(' + t.id + ')"></div>' +
+            '<div class="task-desc">' + escHtml(t.description) + '</div>' +
+            (isAdmin ? '<button class="task-btn-del" onclick="delTask(' + t.id + ')" title="Удалить">✕</button>' : '') +
+            '</div>'
+        ).join('');
     }
 
     function toggleAdd() {
@@ -149,34 +137,29 @@ burger.classList.remove("open");
     async function addTask() {
         const desc = document.getElementById('newTask').value.trim();
         if (!desc) return;
-        const res = await api.post(`/api/checklists/${clId}/tasks`, { description: desc, sortOrder: 0 });
+        const res = await api.post('/api/checklists/' + clId + '/tasks', { description: desc, sortOrder: 0 });
         if (res.ok) { document.getElementById('newTask').value = ''; toggleAdd(); showToast('Задача добавлена'); load(); }
         else showToast('Ошибка', 'err');
     }
 
     async function toggle(taskId) {
-        const res = await api.patch(`/api/checklists/${clId}/tasks/${taskId}/toggle`);
+        const res = await api.patch('/api/checklists/' + clId + '/tasks/' + taskId + '/toggle');
         if (!res.ok) { showToast('Ошибка', 'err'); return; }
-
-        // Обновляем задачу на месте — без перерисовки списка
-        const taskEl  = document.getElementById(`task-${taskId}`);
+        const taskEl  = document.getElementById('task-' + taskId);
         const checkEl = taskEl.querySelector('.task-check');
         const isDone  = taskEl.classList.contains('done');
-
         taskEl.classList.toggle('done', !isDone);
         checkEl.classList.toggle('checked', !isDone);
-
-        // Обновляем прогресс-бар
         const total = document.querySelectorAll('.task-item').length;
         const done  = document.querySelectorAll('.task-item.done').length;
-        const pct   = total ? Math.round(done / total * 100) : 0;
-        document.getElementById('progressText').textContent = `${done} из ${total} задач выполнено — ${pct}%`;
+        const pct   = total ? Math.round(done/total*100) : 0;
+        document.getElementById('progressText').textContent = done + ' из ' + total + ' задач выполнено — ' + pct + '%';
         document.getElementById('progressFill').style.width = pct + '%';
     }
 
     async function delTask(taskId) {
         if (!confirm('Удалить задачу?')) return;
-        const res = await api.delete(`/api/checklists/${clId}/tasks/${taskId}`);
+        const res = await api.delete('/api/checklists/' + clId + '/tasks/' + taskId);
         if (res.ok) { showToast('Удалено'); load(); }
         else showToast('Ошибка', 'err');
     }
@@ -188,8 +171,7 @@ burger.classList.remove("open");
             showToast('Отправлено в архив');
             const redirect = getRole() === 'ADMIN' ? 'archive.html' : 'checklists.html';
             setTimeout(() => location.href = redirect, 1200);
-        }
-        else showToast('Ошибка', 'err');
+        } else showToast('Ошибка', 'err');
     }
 
     load();

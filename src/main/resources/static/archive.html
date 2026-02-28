@@ -4,19 +4,16 @@
     <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Архив — Coffee Manager</title>
     <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="nav-mobile.css">
     <style>
         .page-header { margin-bottom:40px; }
         .archive-table-wrap { background:var(--surface); border:1px solid var(--border2); border-radius:2px; overflow:hidden; position:relative; }
         .archive-table-wrap::before { content:''; position:absolute; top:0;left:0;right:0; height:1px; background:linear-gradient(90deg,transparent,var(--purple-dim),transparent); }
-
-        /* detail modal */
         .detail-tasks { display:flex; flex-direction:column; gap:8px; max-height:60vh; overflow-y:auto; margin-top:20px; }
         .detail-task { display:flex; align-items:center; gap:12px; padding:12px 16px; background:var(--surface2); border-radius:2px; border:1px solid var(--border2); font-size:12px; }
         .detail-task .chk { width:16px; height:16px; border:1px solid var(--border); border-radius:1px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
         .detail-task.done .chk { background:var(--green-dim); border-color:rgba(79,255,176,.3); }
         .detail-task.done .chk::after { content:'✓'; font-size:9px; color:var(--green); }
-        .detail-task.done .dt { color:var(--text-dim); text-decoration:line-through; text-decoration-color:rgba(232,228,240,.2); }
+        .detail-task.done .dt { color:var(--text-dim); text-decoration:line-through; }
         .dt { flex:1; }
         .meta-row { display:flex; gap:24px; margin-bottom:20px; flex-wrap:wrap; }
         .meta-item { font-size:11px; color:var(--text-dim); letter-spacing:.07em; }
@@ -25,10 +22,9 @@
 </head>
 <body>
 <canvas id="particles"></canvas>
-
 <nav>
     <div class="nav-logo">Coffee Manager</div>
-    <button class="burger" id="burger" onclick="toggleNav()" aria-label="Меню"><span></span><span></span><span></span></button>
+    <button class="burger" id="burger" onclick="toggleNav()"><span></span><span></span><span></span></button>
     <div class="nav-right" id="navRight">
         <div class="nav-links">
             <a href="checklists.html" class="nav-link">Чек-листы</a>
@@ -39,33 +35,19 @@
         <button class="btn-logout" onclick="logout()">Выйти</button>
     </div>
 </nav>
-
 <main>
     <div class="page-header anim">
         <h1 class="page-title">Архив</h1>
         <div class="page-sub">История выполненных чек-листов</div>
     </div>
-
     <div class="archive-table-wrap anim anim-1">
-        <table class="table" id="table">
-            <thead>
-            <tr>
-                <th>#</th>
-                <th>Чек-лист</th>
-                <th>Выполнил</th>
-                <th>Дата</th>
-                <th>Задачи</th>
-                <th></th>
-            </tr>
-            </thead>
-            <tbody id="tbody">
-            <tr><td colspan="6" style="text-align:center;padding:40px;color:var(--text-dim);font-size:12px">Загрузка...</td></tr>
-            </tbody>
+        <table class="table">
+            <thead><tr><th>#</th><th>Чек-лист</th><th>Выполнил</th><th>Дата</th><th>Задачи</th><th></th></tr></thead>
+            <tbody id="tbody"><tr><td colspan="6" style="text-align:center;padding:40px;color:var(--text-dim);font-size:12px">Загрузка...</td></tr></tbody>
         </table>
     </div>
 </main>
 
-<!-- Detail modal -->
 <div class="modal-bg" id="modal">
     <div class="modal">
         <button class="modal-close" onclick="closeModal()">✕</button>
@@ -80,23 +62,6 @@
 </div>
 
 <div class="toast" id="toast"></div>
-
-<script>
-    function toggleNav(){
-        const nav=document.getElementById("navRight");
-        const burger=document.getElementById("burger");
-        nav.classList.toggle("open");
-        burger.classList.toggle("open");
-    }
-    document.addEventListener("click",function(e){
-        const nav=document.getElementById("navRight");
-        const burger=document.getElementById("burger");
-        if(nav<script src="api.js"></script><script src="api.js"></script>burger<script src="api.js"></script><script src="api.js"></script>!nav.contains(e.target)<script src="api.js"></script><script src="api.js"></script>!burger.contains(e.target)){
-nav.classList.remove("open");
-burger.classList.remove("open");
-}
-});
-</script>
 <script src="api.js"></script>
 <script>
     guardAuth();
@@ -104,10 +69,23 @@ burger.classList.remove("open");
     document.getElementById('navUser').textContent = getName();
     if (getRole() === 'ADMIN') document.getElementById('navAdmin').style.display = '';
 
+    function toggleNav() {
+        document.getElementById('navRight').classList.toggle('open');
+        document.getElementById('burger').classList.toggle('open');
+    }
+    document.addEventListener('click', function(e) {
+        const nav = document.getElementById('navRight');
+        const burger = document.getElementById('burger');
+        if (nav && burger && !nav.contains(e.target) && !burger.contains(e.target)) {
+            nav.classList.remove('open');
+            burger.classList.remove('open');
+        }
+    });
+
     function formatDate(iso) {
         const d = new Date(iso);
-        return d.toLocaleDateString('ru-RU', { day:'2-digit', month:'2-digit', year:'numeric' })
-            + ' ' + d.toLocaleTimeString('ru-RU', { hour:'2-digit', minute:'2-digit' });
+        return d.toLocaleDateString('ru-RU', {day:'2-digit',month:'2-digit',year:'numeric'}) + ' ' +
+            d.toLocaleTimeString('ru-RU', {hour:'2-digit',minute:'2-digit'});
     }
 
     async function load() {
@@ -115,45 +93,43 @@ burger.classList.remove("open");
         if (!data) return;
         const tbody = document.getElementById('tbody');
         if (!data.length) {
-            tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:60px;color:var(--text-dim);font-size:12px">Архив пуст</td></tr>`;
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:60px;color:var(--text-dim);font-size:12px">Архив пуст</td></tr>';
             return;
         }
         tbody.innerHTML = data.map((a, i) => {
             const pct = a.totalTasks ? Math.round(a.completedTasks/a.totalTasks*100) : 0;
-            return `<tr style="animation:fadeUp .4s ${i*.04}s both">
-            <td><span class="badge badge-dim">#${String(a.id).padStart(3,'0')}</span></td>
-            <td style="font-family:'Cormorant Garamond',serif;font-size:16px">${escHtml(a.checklistTitle)}</td>
-            <td style="color:var(--text-dim)">${escHtml(a.submittedByName)}</td>
-            <td style="color:var(--text-dim);font-size:11px">${formatDate(a.submittedAt)}</td>
-            <td>
-                <div style="display:flex;align-items:center;gap:10px">
-                    <span class="badge ${pct===100?'badge-green':'badge-dim'}">${a.completedTasks}/${a.totalTasks}</span>
-                    <div style="width:80px" class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
-                </div>
-            </td>
-            <td><button class="btn btn-ghost btn-sm" onclick="openDetail(${a.id})">Детали</button></td>
-        </tr>`;
+            return '<tr style="animation:fadeUp .4s ' + (i*.04) + 's both">' +
+                '<td><span class="badge badge-dim">#' + String(a.id).padStart(3,'0') + '</span></td>' +
+                '<td style="font-family:\'Cormorant Garamond\',serif;font-size:16px">' + escHtml(a.checklistTitle) + '</td>' +
+                '<td style="color:var(--text-dim)">' + escHtml(a.submittedByName) + '</td>' +
+                '<td style="color:var(--text-dim);font-size:11px">' + formatDate(a.submittedAt) + '</td>' +
+                '<td><div style="display:flex;align-items:center;gap:10px">' +
+                '<span class="badge ' + (pct===100?'badge-green':'badge-dim') + '">' + a.completedTasks + '/' + a.totalTasks + '</span>' +
+                '<div style="width:80px" class="progress-bar"><div class="progress-fill" style="width:' + pct + '%"></div></div>' +
+                '</div></td>' +
+                '<td><button class="btn btn-ghost btn-sm" onclick="openDetail(' + a.id + ')">Детали</button></td>' +
+                '</tr>';
         }).join('');
     }
 
     async function openDetail(id) {
-        const data = await api.get(`/api/archive/${id}`);
+        const data = await api.get('/api/archive/' + id);
         if (!data) return;
         document.getElementById('mTitle').textContent = data.checklistTitle;
-        document.getElementById('mWho').textContent  = data.submittedByName;
-        document.getElementById('mDate').textContent = formatDate(data.submittedAt);
-        document.getElementById('mTasks').innerHTML = (data.tasks || []).map(t => `
-        <div class="detail-task${t.completed?' done':''}">
-            <div class="chk"></div>
-            <div class="dt">${escHtml(t.description)}</div>
-            ${t.completed ? '<span class="badge badge-green" style="font-size:9px">✓</span>' : ''}
-        </div>
-    `).join('') || '<div style="color:var(--text-dim);font-size:12px">Задачи не найдены</div>';
+        document.getElementById('mWho').textContent   = data.submittedByName;
+        document.getElementById('mDate').textContent  = formatDate(data.submittedAt);
+        document.getElementById('mTasks').innerHTML = (data.tasks || []).map(t =>
+            '<div class="detail-task' + (t.completed?' done':'') + '">' +
+            '<div class="chk"></div>' +
+            '<div class="dt">' + escHtml(t.description) + '</div>' +
+            (t.completed ? '<span class="badge badge-green" style="font-size:9px">✓</span>' : '') +
+            '</div>'
+        ).join('') || '<div style="color:var(--text-dim);font-size:12px">Задачи не найдены</div>';
         document.getElementById('modal').classList.add('open');
     }
 
     function closeModal() { document.getElementById('modal').classList.remove('open'); }
-    document.getElementById('modal').addEventListener('click', e => { if (e.target === e.currentTarget) closeModal(); });
+    document.getElementById('modal').addEventListener('click', e => { if(e.target===e.currentTarget) closeModal(); });
 
     load();
 </script>
