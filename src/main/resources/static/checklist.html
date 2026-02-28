@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Чек-лист — Coffee Manager</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .back { display:inline-flex; align-items:center; gap:8px; font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--text-dim); text-decoration:none; margin-bottom:36px; transition:color .2s; }
+        .back:hover { color:var(--purple); }
+        .cl-header { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:10px; gap:20px; }
+        .progress-wrap { margin-bottom:36px; }
+        .progress-text { font-size:11px; color:var(--text-dim); letter-spacing:.1em; margin-bottom:8px; }
+        .tasks-list { display:flex; flex-direction:column; gap:8px; margin-bottom:40px; }
+        .task-btn-del { background:transparent; border:none; color:var(--text-dim); font-size:16px; cursor:pointer; padding:2px 6px; border-radius:1px; opacity:0; transition:opacity .2s,color .2s; line-height:1; }
+        .task-item:hover .task-btn-del { opacity:1; }
+        .task-btn-del:hover { color:var(--error); }
+        .archive-section { padding-top:28px; border-top:1px solid var(--border2); display:flex; justify-content:flex-end; }
+        .add-form { background:var(--surface); border:1px solid var(--border); border-radius:2px; padding:22px 26px; margin-bottom:28px; position:relative; overflow:hidden; display:none; }
+        .add-form::before { content:''; position:absolute; top:0;left:0;right:0; height:1px; background:linear-gradient(90deg,transparent,var(--purple-dim),transparent); }
+        .add-form.show { display:block; }
+        .add-row { display:flex; gap:10px; }
+        .add-row input { flex:1; }
+    </style>
+</head>
+<body>
+<canvas id="particles"></canvas>
+
+<nav>
+    <div class="nav-logo">Coffee Manager</div>
+    <div class="nav-right">
+        <div class="nav-links">
+            <a href="checklists.html" class="nav-link active">Чек-листы</a>
+            <span id="navArchive" style="display:none"><a href="archive.html" class="nav-link">Архив</a></span>
+            <span id="navAdmin" style="display:none"><a href="admin.html" class="nav-link">Админ</a></span>
+        </div>
+        <span class="nav-user" id="navUser"></span>
+        <button class="btn-logout" onclick="logout()">Выйти</button>
+    </div>
+</nav>
+
+<main>
+    <a href="checklists.html" class="back anim">← Назад</a>
+
+    <div class="cl-header anim anim-1">
+        <div>
+            <h1 class="page-title" id="clTitle">Загрузка...</h1>
+            <div class="page-sub" id="clId"></div>
+        </div>
+        <div id="adminBtns" style="display:none;flex-shrink:0">
+            <button class="btn btn-ghost btn-sm" onclick="toggleAdd()">+ Задача</button>
+        </div>
+    </div>
+
+    <div class="progress-wrap anim anim-2">
+        <div class="progress-text" id="progressText">0 из 0 задач выполнено</div>
+        <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+    </div>
+
+    <div class="add-form" id="addForm">
+        <div class="add-row">
+            <input type="text" id="newTask" placeholder="Описание задачи...">
+            <button class="btn btn-primary btn-sm" onclick="addTask()">Добавить</button>
+            <button class="btn btn-ghost btn-sm" onclick="toggleAdd()">Отмена</button>
+        </div>
+    </div>
+
+    <div class="tasks-list" id="tasksList"></div>
+
+    <div class="archive-section anim anim-3">
+        <button class="btn btn-ghost" id="btnArchive" onclick="submitArchive()">Отправить в архив</button>
+    </div>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script src="api.js"></script>
+<script>
+    guardAuth();
+    initParticles(0.35, 70);
+    document.getElementById('navUser').textContent = getName();
+    if (getRole() === 'ADMIN') {
+        document.getElementById('navAdmin').style.display = '';
+        document.getElementById('navArchive').style.display = '';
+        document.getElementById('adminBtns').style.display = 'flex';
+    }
+
+    const params = new URLSearchParams(location.search);
+    const clId = parseInt(params.get('id'));
+    if (!clId) location.href = 'checklists.html';
+
+    let checklist = null;
+
+    async function load() {
+        checklist = await api.get(`/api/checklists/${clId}`);
+        if (!checklist) return;
+        document.title = checklist.title + ' — Coffee Manager';
+        document.getElementById('clTitle').textContent = checklist.title;
+        document.getElementById('clId').textContent = `#${String(clId).padStart(3,'0')}`;
+        renderTasks(checklist.tasks || []);
+    }
+
+    function renderTasks(tasks) {
+        const done  = tasks.filter(t => t.completed).length;
+        const total = tasks.length;
+        const pct   = total ? Math.round(done/total*100) : 0;
+        document.getElementById('progressText').textContent = `${done} из ${total} задач выполнено — ${pct}%`;
+        document.getElementById('progressFill').style.width = pct + '%';
+
+        const list = document.getElementById('tasksList');
+        if (!tasks.length) {
+            list.innerHTML = `<div class="empty"><span class="icon">📋</span><p>Задач пока нет</p></div>`;
+            return;
+        }
+
+        const isAdmin = getRole() === 'ADMIN';
+        list.innerHTML = tasks.map((t, i) => `
+        <div class="task-item${t.completed ? ' done' : ''}" id="task-${t.id}" style="animation:fadeUp .4s ${i*.04}s both">
+            <div class="task-order">${String(i + 1).padStart(2,'0')}</div>
+            <div class="task-check${t.completed ? ' checked' : ''}" onclick="toggle(${t.id})"></div>
+            <div class="task-desc">${escHtml(t.description)}</div>
+            ${isAdmin ? `<button class="task-btn-del" onclick="delTask(${t.id})" title="Удалить">✕</button>` : ''}
+        </div>
+    `).join('');
+    }
+
+    function toggleAdd() {
+        document.getElementById('addForm').classList.toggle('show');
+        document.getElementById('newTask').focus();
+    }
+
+    async function addTask() {
+        const desc = document.getElementById('newTask').value.trim();
+        if (!desc) return;
+        const res = await api.post(`/api/checklists/${clId}/tasks`, { description: desc, sortOrder: 0 });
+        if (res.ok) { document.getElementById('newTask').value = ''; toggleAdd(); showToast('Задача добавлена'); load(); }
+        else showToast('Ошибка', 'err');
+    }
+
+    async function toggle(taskId) {
+        const res = await api.patch(`/api/checklists/${clId}/tasks/${taskId}/toggle`);
+        if (res.ok) load();
+        else showToast('Ошибка', 'err');
+    }
+
+    async function delTask(taskId) {
+        if (!confirm('Удалить задачу?')) return;
+        const res = await api.delete(`/api/checklists/${clId}/tasks/${taskId}`);
+        if (res.ok) { showToast('Удалено'); load(); }
+        else showToast('Ошибка', 'err');
+    }
+
+    async function submitArchive() {
+        if (!confirm('Отправить чек-лист в архив?')) return;
+        const res = await api.post('/api/archive', { checklistId: clId });
+        if (res.ok) {
+            showToast('Отправлено в архив');
+            const redirect = getRole() === 'ADMIN' ? 'archive.html' : 'checklists.html';
+            setTimeout(() => location.href = redirect, 1200);
+        }
+        else showToast('Ошибка', 'err');
+    }
+
+    load();
+</script>
+</body>
+</html>
