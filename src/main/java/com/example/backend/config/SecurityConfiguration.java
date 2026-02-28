@@ -41,19 +41,12 @@ public class SecurityConfiguration {
                 .csrf(AbstractHttpConfigurer::disable)
 
                 .authorizeHttpRequests(auth -> auth
+                        // Публичные эндпоинты (доступны без токена)
                         .requestMatchers("/", "/*.html", "/api.js", "/style.css").permitAll()
-                        .requestMatchers("/auth/**").permitAll()
+                        .requestMatchers("/auth/**").permitAll()  // ВХОД И РЕГИСТРАЦИЯ ДОСТУПНЫ ВСЕМ!
+                        .requestMatchers("/public/**").permitAll() // для тестов
 
-                        .requestMatchers(HttpMethod.GET, "/api/checklists/**").authenticated()
-                        .requestMatchers(HttpMethod.POST, "/api/checklists/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.PUT, "/api/checklists/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.DELETE, "/api/checklists/**").hasRole("ADMIN")
-
-                        .requestMatchers(HttpMethod.GET, "/api/archive/**").authenticated()
-                        .requestMatchers(HttpMethod.POST, "/api/archive/**").authenticated()
-
-                        .requestMatchers("/api/checklists/*/tasks/**").authenticated()
-
+                        // ВСЕ ОСТАЛЬНЫЕ эндпоинты требуют аутентификации
                         .anyRequest().authenticated()
                 )
 
@@ -69,15 +62,17 @@ public class SecurityConfiguration {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
 
-        // Порты фронтенда — React обычно 3000, Vite (Vue/React) обычно 5173
+        // Разрешаем твой продакшен URL и локальные для разработки
         config.setAllowedOrigins(List.of(
                 "http://localhost:3000",
-                "http://localhost:5173"
+                "http://localhost:5173",
+                "https://web-application-checklist-system-production.up.railway.app"
         ));
 
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);
+        config.setMaxAge(3600L);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
