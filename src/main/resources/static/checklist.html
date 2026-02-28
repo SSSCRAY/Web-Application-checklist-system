@@ -67,6 +67,7 @@
     </div>
     <div class="tasks-list" id="tasksList"></div>
     <div class="archive-section anim anim-3">
+        <button class="btn btn-ghost" style="margin-right:10px" onclick="resetAll()">↺ Новая смена</button>
         <button class="btn btn-ghost" onclick="submitArchive()">Отправить в архив</button>
     </div>
 </main>
@@ -171,6 +172,15 @@
             showToast('Отправлено в архив');
             const redirect = getRole() === 'ADMIN' ? 'archive.html' : 'checklists.html';
             setTimeout(() => location.href = redirect, 1200);
+        } else showToast('Ошибка', 'err');
+    }
+
+    async function resetAll() {
+        if (!confirm('Сбросить все галочки? Это начнёт новую смену.')) return;
+        const res = await api.post('/api/checklists/' + clId + '/tasks/reset', {});
+        if (res.ok) {
+            showToast('Галочки сброшены — новая смена!');
+            load();
         } else showToast('Ошибка', 'err');
     }
 

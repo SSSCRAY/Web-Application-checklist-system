@@ -11,6 +11,8 @@ import com.example.backend.reposiroty.TaskRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
 @Service
 public class TaskService {
 
@@ -18,23 +20,20 @@ public class TaskService {
     private final ChecklistRepository checklistRepository;
     private final TaskMapper mapper;
 
-    public TaskService(TaskRepository taskRepository, ChecklistRepository checklistRepository, TaskMapper mapper) {
+    public TaskService(TaskRepository taskRepository,
+                       ChecklistRepository checklistRepository,
+                       TaskMapper mapper) {
         this.taskRepository = taskRepository;
         this.checklistRepository = checklistRepository;
         this.mapper = mapper;
     }
 
-
-    // Создать задачу в чек листе
     @Transactional
     public TaskResponseDTO create(Integer checklistId, TaskCreateDTO createDTO) {
-        // Находим чек лист
         Checklist checklist = checklistRepository.findById(checklistId)
                 .orElseThrow(() -> new RuntimeException("Checklist not found"));
 
-
         Task task = mapper.toEntity(createDTO);
-
         task.setChecklist(checklist);
 
         if (task.getSortOrder() == null) {
@@ -46,38 +45,40 @@ public class TaskService {
             task.setSortOrder(maxOrder + 1);
         }
 
-        Task saved = taskRepository.save(task);
-
-        return mapper.toDTO(saved);
-
+        return mapper.toDTO(taskRepository.save(task));
     }
-
 
     @Transactional
     public TaskResponseDTO update(Integer checklistId, Integer taskId, TaskUpdateDTO updateDTO) {
         Task task = taskRepository.findByIdAndChecklistId(taskId, checklistId)
                 .orElseThrow(() -> new RuntimeException("Task not found"));
-
         task.setDescription(updateDTO.description());
-        Task updated = taskRepository.save(task);
-
-        return mapper.toDTO(updated);
+        return mapper.toDTO(taskRepository.save(task));
     }
 
     @Transactional
     public void delete(Integer taskId) {
-        Task task = taskRepository.findById(taskId).
-                orElseThrow(() -> new RuntimeException("Task not found"));
-
+        Task task = taskRepository.findById(taskId)
+                .orElseThrow(() -> new RuntimeException("Task not found"));
         taskRepository.delete(task);
     }
 
+    @Transactional
     public TaskResponseDTO toggle(Integer taskId) {
         Task task = taskRepository.findById(taskId)
                 .orElseThrow(() -> new RuntimeException("Task not found"));
-
         task.setCompleted(!task.isCompleted());
-        Task updated = taskRepository.save(task);
-        return mapper.toDTO(updated);
+        return mapper.toDTO(taskRepository.save(task));
+    }
+
+    // Сброс всех галочек чеклиста — для новой смены
+    @Transactional
+    public void resetAll(Integer checklistId) {
+        checklistRepository.findById(checklistId)
+                .orElseThrow(() -> new RuntimeException("Checklist not found"));
+
+        List<Task> tasks = taskRepository.findByChecklistIdOrderBySortOrder(checklistId);
+        tasks.forEach(t -> t.setCompleted(false));
+        taskRepository.saveAll(tasks);
     }
 }

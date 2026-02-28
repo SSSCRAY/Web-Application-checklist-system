@@ -44,4 +44,11 @@ public class TaskController {
     public ResponseEntity<TaskResponseDTO> toggleTask(@PathVariable Integer id) {
         return ResponseEntity.ok(taskService.toggle(id));
     }
+
+    // Сброс всех галочек — новая смена
+    @PostMapping("/reset")
+    public ResponseEntity<Void> resetAll(@PathVariable Integer checklistId) {
+        taskService.resetAll(checklistId);
+        return ResponseEntity.noContent().build();
+    }
 }
