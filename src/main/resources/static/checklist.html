@@ -138,8 +138,22 @@
 
     async function toggle(taskId) {
         const res = await api.patch(`/api/checklists/${clId}/tasks/${taskId}/toggle`);
-        if (res.ok) load();
-        else showToast('Ошибка', 'err');
+        if (!res.ok) { showToast('Ошибка', 'err'); return; }
+
+        // Обновляем задачу на месте — без перерисовки списка
+        const taskEl  = document.getElementById(`task-${taskId}`);
+        const checkEl = taskEl.querySelector('.task-check');
+        const isDone  = taskEl.classList.contains('done');
+
+        taskEl.classList.toggle('done', !isDone);
+        checkEl.classList.toggle('checked', !isDone);
+
+        // Обновляем прогресс-бар
+        const total = document.querySelectorAll('.task-item').length;
+        const done  = document.querySelectorAll('.task-item.done').length;
+        const pct   = total ? Math.round(done / total * 100) : 0;
+        document.getElementById('progressText').textContent = `${done} из ${total} задач выполнено — ${pct}%`;
+        document.getElementById('progressFill').style.width = pct + '%';
     }
 
     async function delTask(taskId) {
