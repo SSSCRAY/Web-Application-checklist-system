@@ -3,10 +3,7 @@ package com.example.backend.service;
 import com.example.backend.dto.Archive_dto.ArchiveDetailDTO;
 import com.example.backend.dto.Archive_dto.ArchiveListDTO;
 import com.example.backend.dto.Archive_dto.ArchiveTaskDTO;
-import com.example.backend.entity.Archive;
-import com.example.backend.entity.Checklist;
-import com.example.backend.entity.Task;
-import com.example.backend.entity.User;
+import com.example.backend.entity.*;
 import com.example.backend.mapper.ArchiveMapper;
 import com.example.backend.reposiroty.ArchiveRepository;
 import com.example.backend.reposiroty.ChecklistRepository;
@@ -46,11 +43,23 @@ public class ArchiveService {
     public Archive submitToArchive(Integer checklistId, Integer userId) {
         Checklist checklist = checklistRepository.findById(checklistId)
                 .orElseThrow(() -> new RuntimeException("Checklist not found"));
-
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         Archive archive = new Archive(checklist, checklist.getTitle(), user);
+        archive = archiveRepository.save(archive);
+
+        // Копируем задачи в момент архивации — снимок состояния
+        List<Task> tasks = taskRepository.findByChecklistIdOrderBySortOrder(checklistId);
+        for (Task task : tasks) {
+            ArchiveTask archiveTask = new ArchiveTask(
+                    archive,
+                    task.getDescription(),
+                    task.isCompleted(),
+                    task.getSortOrder()
+            );
+            archive.getArchiveTasks().add(archiveTask);
+        }
 
         return archiveRepository.save(archive);
     }
@@ -60,31 +69,15 @@ public class ArchiveService {
      */
     public List<ArchiveListDTO> getAllArchives() {
         List<Archive> archives = archiveRepository.findAllByOrderBySubmittedAtDesc();
-
         return archives.stream().map(archive -> {
-            ArchiveListDTO baseDTO = archiveMapper.toArchiveListDTO(archive);
-
-            // Считаем задачи
-            int totalTasks = 0;
-            int completedTasks = 0;
-
-            if (archive.getChecklist() != null) {
-                List<Task> tasks = taskRepository.findByChecklistIdOrderBySortOrder(
-                        archive.getChecklist().getId()
-                );
-
-                totalTasks = tasks.size();
-                completedTasks = (int) tasks.stream()
-                        .filter(Task::isCompleted)
-                        .count();
-            }
-
-            // Создаем новый record с посчитанными значениями
+            int totalTasks = archive.getArchiveTasks().size();
+            int completedTasks = (int) archive.getArchiveTasks().stream()
+                    .filter(ArchiveTask::isCompleted).count();
             return new ArchiveListDTO(
-                    baseDTO.id(),
-                    baseDTO.checklistTitle(),
-                    baseDTO.submittedByName(),
-                    baseDTO.submittedAt(),
+                    archive.getId(),
+                    archive.getChecklistTitle(),
+                    archive.getSubmittedBy().getFullName(),
+                    archive.getSubmittedAt(),
                     totalTasks,
                     completedTasks
             );
@@ -98,25 +91,15 @@ public class ArchiveService {
         Archive archive = archiveRepository.findById(archiveId)
                 .orElseThrow(() -> new RuntimeException("Archive not found"));
 
-        ArchiveDetailDTO baseDTO = archiveMapper.toArchiveDetailDTO(archive);
+        List<ArchiveTaskDTO> taskDTOs = archive.getArchiveTasks().stream()
+                .map(t -> new ArchiveTaskDTO(t.getId(), t.getDescription(), t.isCompleted(), t.getSortOrder()))
+                .collect(Collectors.toList());
 
-        // Получаем задачи
-        List<ArchiveTaskDTO> taskDTOs = List.of();
-
-        if (archive.getChecklist() != null) {
-            List<Task> tasks = taskRepository.findByChecklistIdOrderBySortOrder(
-                    archive.getChecklist().getId()
-            );
-
-            taskDTOs = archiveMapper.tasksToArchiveTaskDTOs(tasks);
-        }
-
-        // Создаем новый record с задачами
         return new ArchiveDetailDTO(
-                baseDTO.id(),
-                baseDTO.checklistTitle(),
-                baseDTO.submittedByName(),
-                baseDTO.submittedAt(),
+                archive.getId(),
+                archive.getChecklistTitle(),
+                archive.getSubmittedBy().getFullName(),
+                archive.getSubmittedAt(),
                 taskDTOs
         );
     }

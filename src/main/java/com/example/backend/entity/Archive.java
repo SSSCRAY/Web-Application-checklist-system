@@ -5,6 +5,8 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "archive")
@@ -19,6 +21,10 @@ public class Archive {
 
     @Column(name = "checklist_title", nullable = false, length = 255)
     private String checklistTitle; // копия названия
+
+    @OneToMany(mappedBy = "archive", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @OrderBy("sortOrder ASC")
+    private List<ArchiveTask> archiveTasks = new ArrayList<>();
 
     @ManyToOne
     @JoinColumn(name = "submitted_by", nullable = false)
@@ -60,6 +66,9 @@ public class Archive {
     public void setChecklistTitle(String checklistTitle) {
         this.checklistTitle = checklistTitle;
     }
+
+    public List<ArchiveTask> getArchiveTasks() { return archiveTasks; }
+    public void setArchiveTasks(List<ArchiveTask> archiveTasks) { this.archiveTasks = archiveTasks; }
 
     public User getSubmittedBy() {
         return submittedBy;
