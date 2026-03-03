@@ -83,7 +83,9 @@
     });
 
     function formatDate(iso) {
-        const d = new Date(iso);
+        // Если сервер не возвращает Z (UTC), добавляем его вручную
+        const str = iso.endsWith('Z') || iso.includes('+') ? iso : iso + 'Z';
+        const d = new Date(str);
         return d.toLocaleDateString('ru-RU', {day:'2-digit',month:'2-digit',year:'numeric'}) + ' ' +
             d.toLocaleTimeString('ru-RU', {hour:'2-digit',minute:'2-digit'});
     }
