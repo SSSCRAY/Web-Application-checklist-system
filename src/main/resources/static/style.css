@@ -241,14 +241,22 @@ select option { background:var(--surface); }
     .btn { padding:10px 16px; font-size:10px; letter-spacing:.12em; }
     .btn-sm { padding:7px 12px; font-size:10px; }
 
-    /* MODAL */
-    .modal-bg { align-items:flex-end; }
-    .modal { padding:28px 20px; border-radius:2px 2px 0 0; max-width:100%; width:100%; margin:0; }
+    /* MODAL — fix when keyboard opens */
+    .modal-bg { align-items:flex-start; padding-top:60px; overflow-y:auto; }
+    .modal { padding:24px 18px; border-radius:2px; max-width:100%; width:calc(100% - 32px); margin:0 16px 32px; }
+    .modal-actions { flex-direction:column; gap:8px; }
+    .modal-actions .btn { width:100%; justify-content:center; }
 
     /* TASKS */
     .task-item { padding:13px 14px; gap:10px; }
-    .task-desc { font-size:12px; }
+    .task-desc { font-size:13px; letter-spacing:0; text-transform:none; }
     .task-order { min-width:20px; font-size:9px; }
+
+    /* ADMIN — fix list item overflow */
+    .cl-list-item { padding:12px 14px; gap:8px; }
+    .cli-title { font-size:15px; }
+    .cli-actions { gap:4px; }
+    .cli-actions .btn-sm { padding:6px 8px; font-size:9px; letter-spacing:.05em; }
 
     /* ARCHIVE TABLE → cards */
     .archive-table-wrap { background:transparent; border:none; border-radius:0; overflow:visible; }
@@ -267,7 +275,7 @@ select option { background:var(--surface); }
 
     /* ADMIN */
     .admin-layout { grid-template-columns:1fr !important; }
-    .cl-list { max-height:280px; overflow-y:auto; }
+    .cl-list { max-height:260px; overflow-y:auto; }
 
     /* TOAST */
     .toast { bottom:16px; right:16px; left:16px; text-align:center; }
