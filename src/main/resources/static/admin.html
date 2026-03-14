@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Админ панель — Coffee Manager</title>
     <link rel="stylesheet" href="style.css">
     <style>
@@ -305,7 +305,7 @@
         else showToast('Ошибка', 'err');
     }
     async function deleteChecklist(id) {
-        if (!confirm('Удалить чек-лист?')) return;
+        if (!await showConfirm('Удалить чек-лист?')) return;
         const res = await api.delete('/api/checklists/' + id);
         if (res.ok) {
             showToast('Удалено');
@@ -325,7 +325,7 @@
         if (res.ok) loadChecklists(); else showToast('Ошибка', 'err');
     }
     async function deleteTask(taskId) {
-        if (!confirm('Удалить задачу?')) return;
+        if (!await showConfirm('Удалить задачу?')) return;
         const res = await api.delete('/api/checklists/' + selectedCl.id + '/tasks/' + taskId);
         if (res.ok) { showToast('Задача удалена'); loadChecklists(); } else showToast('Ошибка', 'err');
     }
@@ -396,7 +396,7 @@
         else showToast('Ошибка', 'err');
     }
     async function deleteCategory(id) {
-        if (!confirm('Удалить папку? Чек-листы останутся.')) return;
+        if (!await showConfirm('Удалить папку? Чек-листы останутся.')) return;
         const res = await api.delete('/api/categories/' + id);
         if (res.ok) { showToast('Папка удалена'); loadCategories(); }
         else showToast('Ошибка', 'err');

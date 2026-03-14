@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Чек-лист — Coffee Manager</title>
     <link rel="stylesheet" href="style.css">
     <style>
@@ -159,14 +159,14 @@
     }
 
     async function delTask(taskId) {
-        if (!confirm('Удалить задачу?')) return;
+        if (!await showConfirm('Удалить задачу?')) return;
         const res = await api.delete('/api/checklists/' + clId + '/tasks/' + taskId);
         if (res.ok) { showToast('Удалено'); load(); }
         else showToast('Ошибка', 'err');
     }
 
     async function submitArchive() {
-        if (!confirm('Отправить чек-лист в архив?')) return;
+        if (!await showConfirm('Отправить чек-лист в архив?')) return;
         const res = await api.post('/api/archive', { checklistId: clId });
         if (res.ok) {
             showToast('Отправлено в архив');
@@ -176,7 +176,7 @@
     }
 
     async function resetAll() {
-        if (!confirm('Сбросить все галочки? Это начнёт новую смену.')) return;
+        if (!await showConfirm('Сбросить все галочки? Это начнёт новую смену.')) return;
         const res = await api.post('/api/checklists/' + clId + '/tasks/reset', {});
         if (res.ok) {
             showToast('Галочки сброшены — новая смена!');
