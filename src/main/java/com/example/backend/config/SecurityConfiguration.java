@@ -78,7 +78,7 @@ public class SecurityConfiguration {
         config.setAllowedOrigins(List.of(
                 "http://localhost:3000",
                 "http://localhost:5173",
-                "checklist-system.up.railway.app"
+                "https://checklist-system.up.railway.app"
         ));
 
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
