@@ -36,29 +36,25 @@ body { display:flex; align-items:center; justify-content:center; overflow:hidden
 </div>
 <script src="api.js"></script>
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        initParticles(1, 120);
-    })
-
-    if (getToken()) window.location.href = 'checklists.html';
-
-    document.getElementById('form').addEventListener('submit', async e => {
-        e.preventDefault();
-        const btn = document.getElementById('btn'), err = document.getElementById('err');
-        err.classList.remove('show'); btn.disabled = true; btn.textContent = 'Вход...';
-        try {
-            const res = await fetch(API + '/auth/login', {
-                method:'POST', headers:{'Content-Type':'application/json'},
-                body: JSON.stringify({ username: document.getElementById('username').value.trim(), password: document.getElementById('password').value })
-            });
-            if (!res.ok) throw new Error();
-            const d = await res.json();
-            localStorage.setItem('token', d.token);
-            localStorage.setItem('role', d.role);
-            localStorage.setItem('fullName', d.fullName);
-            window.location.href = d.role === 'ADMIN' ? 'admin.html' : 'checklists.html';
-        } catch { err.classList.add('show'); btn.disabled = false; btn.textContent = 'Войти'; }
-    });
+initParticles(1, 120);
+if (getToken()) window.location.href = 'checklists.html';
+document.getElementById('form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const btn = document.getElementById('btn'), err = document.getElementById('err');
+    err.classList.remove('show'); btn.disabled = true; btn.textContent = 'Вход...';
+    try {
+        const res = await fetch(API + '/auth/login', {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({ username: document.getElementById('username').value.trim(), password: document.getElementById('password').value })
+        });
+        if (!res.ok) throw new Error();
+        const d = await res.json();
+        localStorage.setItem('token', d.token);
+        localStorage.setItem('role', d.role);
+        localStorage.setItem('fullName', d.fullName);
+        window.location.href = d.role === 'ADMIN' ? 'admin.html' : 'checklists.html';
+    } catch { err.classList.add('show'); btn.disabled = false; btn.textContent = 'Войти'; }
+});
 </script>
 </body>
 </html>
