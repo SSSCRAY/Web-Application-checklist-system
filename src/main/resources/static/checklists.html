@@ -6,6 +6,28 @@
     <link rel="stylesheet" href="style.css">
     <style>
         .page-header { display:flex; align-items:flex-end; justify-content:space-between; margin-bottom:40px; }
+        .folder-section { margin-bottom:12px; }
+        .folder-header {
+            display:flex; align-items:center; gap:12px; cursor:pointer;
+            padding:16px 20px; background:var(--surface); border:1px solid var(--border2);
+            border-radius:2px; transition:background .2s,border-color .2s; user-select:none;
+        }
+        .folder-header:hover { background:var(--surface2); border-color:var(--border); }
+        .folder-header.open { border-color:var(--border); border-radius:2px 2px 0 0; }
+        .folder-icon { font-size:13px; color:var(--purple-dim); transition:transform .25s; }
+        .folder-header.open .folder-icon { transform:rotate(90deg); }
+        .folder-name { font-family:'Cormorant Garamond',serif; font-size:22px; font-weight:400; flex:1; }
+        .folder-count { font-size:10px; color:var(--text-dim); letter-spacing:.1em; }
+        .folder-body {
+            display:none; background:var(--surface2);
+            border:1px solid var(--border); border-top:none;
+            border-radius:0 0 2px 2px; padding:16px;
+        }
+        .folder-body.open { display:block; }
+        .folder-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:10px; }
+        .uncategorized { margin-top:32px; }
+        .uncategorized-label { font-size:10px; letter-spacing:.2em; text-transform:uppercase; color:var(--text-dim); margin-bottom:12px; }
+        @media(max-width:640px){ .folder-grid{grid-template-columns:1fr;} }
     </style>
 </head>
 <body>
@@ -27,7 +49,7 @@
     <div class="page-header anim">
         <div><h1 class="page-title">Чек-листы</h1><div class="page-sub">Задачи текущей смены</div></div>
     </div>
-    <div class="cl-grid" id="grid"></div>
+    <div id="content"></div>
 </main>
 <div class="toast" id="toast"></div>
 <script src="api.js"></script>
@@ -51,26 +73,66 @@
             burger.classList.remove('open');
         }
     });
-    async function load() {
-        const data = await api.get('/api/checklists');
-        if (!data) return;
-        const grid = document.getElementById('grid');
-        if (!data.length) {
-            grid.innerHTML = `<div class="empty" style="grid-column:1/-1"><span class="icon">☕</span><p>Чек-листы не найдены</p></div>`;
-            return;
-        }
-        grid.innerHTML = data.map((cl, i) => {
-            const total = cl.tasks?.length || 0;
-            const done  = cl.tasks?.filter(t => t.completed).length || 0;
-            const pct   = total ? Math.round(done/total*100) : 0;
-            return `<div class="cl-card anim" style="animation-delay:${i*.06}s" onclick="location.href='checklist.html?id=${cl.id}'">
-            <div class="cl-num">#${String(cl.id).padStart(3,'0')}</div>
-            <div class="cl-title">${escHtml(cl.title)}</div>
-            <div class="cl-meta">${done} из ${total} задач • ${pct}%</div>
-            <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
-        </div>`;
-        }).join('');
+
+    function clCard(cl, i) {
+        const total = cl.tasks?.length || 0;
+        const done  = cl.tasks?.filter(t => t.completed).length || 0;
+        const pct   = total ? Math.round(done/total*100) : 0;
+        return '<div class="cl-card" style="animation:fadeUp .4s ' + (i*.05) + 's both" onclick="location.href=\'checklist.html?id=' + cl.id + '\'">' +
+            '<div class="cl-num">#' + String(cl.id).padStart(3,'0') + '</div>' +
+            '<div class="cl-title">' + escHtml(cl.title) + '</div>' +
+            '<div class="cl-meta">' + done + ' из ' + total + ' задач • ' + pct + '%</div>' +
+            '<div class="progress-bar"><div class="progress-fill" style="width:' + pct + '%"></div></div>' +
+            '</div>';
     }
+
+    function toggleFolder(id) {
+        document.getElementById('fh-' + id).classList.toggle('open');
+        document.getElementById('fb-' + id).classList.toggle('open');
+    }
+
+    async function load() {
+        const content = document.getElementById('content');
+        const [categories, allChecklists] = await Promise.all([
+            api.get('/api/categories'),
+            api.get('/api/checklists')
+        ]);
+        if (!categories || !allChecklists) return;
+
+        let html = '';
+
+        // Папки
+        categories.forEach((cat, ci) => {
+            const cls = cat.checklists || [];
+            html += '<div class="folder-section anim" style="animation-delay:' + (ci*.07) + 's">' +
+                '<div class="folder-header" id="fh-' + cat.id + '" onclick="toggleFolder(' + cat.id + ')">' +
+                '<span class="folder-icon">▶</span>' +
+                '<span class="folder-name">' + escHtml(cat.name) + '</span>' +
+                '<span class="folder-count">' + cls.length + ' чек-листов</span>' +
+                '</div>' +
+                '<div class="folder-body" id="fb-' + cat.id + '">' +
+                (cls.length
+                    ? '<div class="folder-grid">' + cls.map((cl,i) => clCard(cl,i)).join('') + '</div>'
+                    : '<div style="color:var(--text-dim);font-size:12px;padding:8px 0">Пусто</div>') +
+                '</div></div>';
+        });
+
+        // Чек-листы без категории
+        const catIds = new Set(categories.flatMap(c => (c.checklists||[]).map(cl => cl.id)));
+        const uncategorized = allChecklists.filter(cl => !catIds.has(cl.id));
+        if (uncategorized.length) {
+            html += '<div class="uncategorized anim anim-3">' +
+                (categories.length ? '<div class="uncategorized-label">Без категории</div>' : '') +
+                '<div class="cl-grid">' + uncategorized.map((cl,i) => clCard(cl,i)).join('') + '</div>' +
+                '</div>';
+        }
+
+        if (!html) {
+            html = '<div class="empty"><span class="icon">☕</span><p>Чек-листы не найдены</p></div>';
+        }
+        content.innerHTML = html;
+    }
+
     load();
 </script>
 </body>

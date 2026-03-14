@@ -49,4 +49,10 @@ public class ChecklistController {
         checklistService.delete(checklistId);
         return ResponseEntity.noContent().build();
     }
+
+    @DeleteMapping("/{checklistId}/category")
+    public ResponseEntity<Void> removeCategory(@PathVariable Integer checklistId) {
+        checklistService.removeCategory(checklistId);
+        return ResponseEntity.noContent().build();
+    }
 }

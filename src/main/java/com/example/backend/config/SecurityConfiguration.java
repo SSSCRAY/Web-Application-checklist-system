@@ -54,6 +54,12 @@ public class SecurityConfiguration {
 
                         .requestMatchers("/api/checklists/*/tasks/**").authenticated()
 
+                        .requestMatchers(HttpMethod.GET, "/api/categories/**").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/categories/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/categories/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/categories/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/checklists/*/category").hasRole("ADMIN")
+
                         .anyRequest().authenticated()
                 )
 

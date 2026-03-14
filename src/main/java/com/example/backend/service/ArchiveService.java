@@ -36,7 +36,7 @@ public class ArchiveService {
         this.archiveMapper = archiveMapper;
     }
 
-    /**
+    /*
      * Отправить чеклист в архив
      */
     @Transactional

@@ -70,4 +70,11 @@ public class ChecklistService {
 
         checklistRepository.delete(checklist);
     }
+
+    @Transactional
+    public void removeCategory(Integer checklistId) {
+        Checklist checklist = checklistRepository.findById(checklistId)
+                .orElseThrow(() -> new RuntimeException("Checklist not found"));
+        checklist.setCategory(null);
+    }
 }
