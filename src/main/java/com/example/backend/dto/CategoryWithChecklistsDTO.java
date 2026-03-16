@@ -5,5 +5,7 @@ import java.util.List;
 public record CategoryWithChecklistsDTO(
         Integer id,
         String name,
-        List<ChecklistResponseDTO> checklists
+        Integer parentId,
+        List<ChecklistResponseDTO> checklists,
+        List<CategoryWithChecklistsDTO> children
 ) {}

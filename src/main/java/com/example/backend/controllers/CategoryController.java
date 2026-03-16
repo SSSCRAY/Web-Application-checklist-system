@@ -26,9 +26,13 @@ public class CategoryController {
     }
 
     @PostMapping
-    public ResponseEntity<CategoryDTO> create(@RequestBody Map<String, String> body) {
+    public ResponseEntity<CategoryDTO> create(@RequestBody Map<String, Object> body) {
+        String name = (String) body.get("name");
+        Integer parentId = body.get("parentId") != null
+                ? ((Number) body.get("parentId")).intValue()
+                : null;
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(categoryService.create(body.get("name")));
+                .body(categoryService.create(name, parentId));
     }
 
     @PutMapping("/{id}")

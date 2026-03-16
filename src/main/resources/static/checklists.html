@@ -6,28 +6,34 @@
     <link rel="stylesheet" href="style.css">
     <style>
         .page-header { display:flex; align-items:flex-end; justify-content:space-between; margin-bottom:40px; }
-        .folder-section { margin-bottom:12px; }
+        .folder-section { margin-bottom:8px; }
         .folder-header {
-            display:flex; align-items:center; gap:12px; cursor:pointer;
-            padding:16px 20px; background:var(--surface); border:1px solid var(--border2);
+            display:flex; align-items:center; gap:10px; cursor:pointer;
+            padding:14px 18px; background:var(--surface); border:1px solid var(--border2);
             border-radius:2px; transition:background .2s,border-color .2s; user-select:none;
         }
         .folder-header:hover { background:var(--surface2); border-color:var(--border); }
         .folder-header.open { border-color:var(--border); border-radius:2px 2px 0 0; }
-        .folder-icon { font-size:13px; color:var(--purple-dim); transition:transform .25s; }
+        .folder-icon { font-size:11px; color:var(--purple-dim); transition:transform .25s; flex-shrink:0; }
         .folder-header.open .folder-icon { transform:rotate(90deg); }
-        .folder-name { font-family:'Cormorant Garamond',serif; font-size:22px; font-weight:400; flex:1; }
-        .folder-count { font-size:10px; color:var(--text-dim); letter-spacing:.1em; }
-        .folder-body {
-            display:none; background:var(--surface2);
-            border:1px solid var(--border); border-top:none;
-            border-radius:0 0 2px 2px; padding:16px;
-        }
+        .folder-name { font-family:'Cormorant Garamond',serif; font-weight:400; flex:1; }
+        .folder-count { font-size:10px; color:var(--text-dim); letter-spacing:.08em; flex-shrink:0; }
+        .folder-body { display:none; background:var(--surface2); border:1px solid var(--border); border-top:none; border-radius:0 0 2px 2px; }
         .folder-body.open { display:block; }
-        .folder-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:10px; }
-        .uncategorized { margin-top:32px; }
+        .folder-level-0 > .folder-header { font-size:20px; padding:16px 20px; }
+        .folder-level-1 > .folder-header { font-size:17px; padding:13px 18px; border-left:2px solid var(--border); }
+        .folder-level-2 > .folder-header { font-size:15px; padding:11px 16px; border-left:2px solid var(--border2); }
+        .folder-children { padding:8px; display:flex; flex-direction:column; gap:6px; }
+        .folder-cls { padding:12px 16px; }
+        .folder-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:10px; }
+        .uncategorized { margin-top:28px; }
         .uncategorized-label { font-size:10px; letter-spacing:.2em; text-transform:uppercase; color:var(--text-dim); margin-bottom:12px; }
-        @media(max-width:640px){ .folder-grid{grid-template-columns:1fr;} }
+        @media(max-width:640px){
+            .folder-grid { grid-template-columns:1fr; }
+            .folder-level-0 > .folder-header { font-size:18px; padding:14px 16px; }
+            .folder-level-1 > .folder-header { font-size:15px; padding:11px 14px; }
+            .folder-level-2 > .folder-header { font-size:13px; padding:9px 12px; }
+        }
     </style>
 </head>
 <body>
@@ -91,6 +97,46 @@
         document.getElementById('fb-' + id).classList.toggle('open');
     }
 
+    function countAll(cat) {
+        const cls = (cat.checklists || []).length;
+        const sub = (cat.children || []).reduce((s, c) => s + (cat.children ? parseInt(countAll(c)) : 0), 0);
+        return cls + sub;
+    }
+
+    function renderFolder(cat, level) {
+        level = level || 0;
+        const cls = cat.checklists || [];
+        const children = cat.children || [];
+        let bodyHtml = '';
+        if (children.length) {
+            bodyHtml += '<div class="folder-children">' + children.map(c => renderFolder(c, level + 1)).join('') + '</div>';
+        }
+        if (cls.length) {
+            bodyHtml += '<div class="folder-cls"><div class="folder-grid">' + cls.map((cl, i) => clCard(cl, i)).join('') + '</div></div>';
+        }
+        if (!bodyHtml) {
+            bodyHtml = '<div style="padding:16px;color:var(--text-dim);font-size:12px">Пусто</div>';
+        }
+        const total = countAll(cat);
+        return '<div class="folder-section folder-level-' + level + '">' +
+            '<div class="folder-header" id="fh-' + cat.id + '" onclick="toggleFolder(' + cat.id + ')">' +
+            '<span class="folder-icon">▶</span>' +
+            '<span class="folder-name">' + escHtml(cat.name) + '</span>' +
+            '<span class="folder-count">' + total + ' чек-листов</span>' +
+            '</div>' +
+            '<div class="folder-body" id="fb-' + cat.id + '">' + bodyHtml + '</div>' +
+            '</div>';
+    }
+
+    function collectIds(cats) {
+        let ids = [];
+        cats.forEach(c => {
+            (c.checklists || []).forEach(cl => ids.push(cl.id));
+            if (c.children) ids = ids.concat(collectIds(c.children));
+        });
+        return ids;
+    }
+
     async function load() {
         const content = document.getElementById('content');
         const [categories, allChecklists] = await Promise.all([
@@ -99,40 +145,20 @@
         ]);
         if (!categories || !allChecklists) return;
 
-        let html = '';
+        let html = categories.map((cat, ci) =>
+            '<div class="anim" style="animation-delay:' + (ci*.07) + 's">' + renderFolder(cat, 0) + '</div>'
+        ).join('');
 
-        // Папки
-        categories.forEach((cat, ci) => {
-            const cls = cat.checklists || [];
-            html += '<div class="folder-section anim" style="animation-delay:' + (ci*.07) + 's">' +
-                '<div class="folder-header" id="fh-' + cat.id + '" onclick="toggleFolder(' + cat.id + ')">' +
-                '<span class="folder-icon">▶</span>' +
-                '<span class="folder-name">' + escHtml(cat.name) + '</span>' +
-                '<span class="folder-count">' + cls.length + ' чек-листов</span>' +
-                '</div>' +
-                '<div class="folder-body" id="fb-' + cat.id + '">' +
-                (cls.length
-                    ? '<div class="folder-grid">' + cls.map((cl,i) => clCard(cl,i)).join('') + '</div>'
-                    : '<div style="color:var(--text-dim);font-size:12px;padding:8px 0">Пусто</div>') +
-                '</div></div>';
-        });
-
-        // Чек-листы без категории
-        const catIds = new Set(categories.flatMap(c => (c.checklists||[]).map(cl => cl.id)));
+        const catIds = new Set(collectIds(categories));
         const uncategorized = allChecklists.filter(cl => !catIds.has(cl.id));
         if (uncategorized.length) {
             html += '<div class="uncategorized anim anim-3">' +
                 (categories.length ? '<div class="uncategorized-label">Без категории</div>' : '') +
-                '<div class="cl-grid">' + uncategorized.map((cl,i) => clCard(cl,i)).join('') + '</div>' +
-                '</div>';
+                '<div class="cl-grid">' + uncategorized.map((cl,i) => clCard(cl,i)).join('') + '</div></div>';
         }
-
-        if (!html) {
-            html = '<div class="empty"><span class="icon">☕</span><p>Чек-листы не найдены</p></div>';
-        }
+        if (!html) html = '<div class="empty"><span class="icon">☕</span><p>Чек-листы не найдены</p></div>';
         content.innerHTML = html;
     }
-
     load();
 </script>
 </body>
