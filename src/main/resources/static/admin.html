@@ -335,7 +335,9 @@
         const list = document.getElementById('taskDndList');
         if (!list) return;
         const items = list.querySelectorAll('.task-admin-item');
+
         items.forEach(item => {
+            // ── Desktop drag ──────────────────────────
             item.addEventListener('dragstart', function(e) {
                 dragSrc = this;
                 this.classList.add('dragging');
@@ -348,19 +350,67 @@
             });
             item.addEventListener('dragover', function(e) {
                 e.preventDefault();
-                e.dataTransfer.dropEffect = 'move';
                 list.querySelectorAll('.task-admin-item').forEach(i => i.classList.remove('drag-over'));
                 if (this !== dragSrc) this.classList.add('drag-over');
             });
             item.addEventListener('drop', function(e) {
                 e.preventDefault();
                 if (dragSrc && this !== dragSrc) {
-                    const allItems = [...list.querySelectorAll('.task-admin-item')];
-                    const srcIdx  = allItems.indexOf(dragSrc);
-                    const destIdx = allItems.indexOf(this);
-                    if (srcIdx < destIdx) this.after(dragSrc);
+                    const all = [...list.querySelectorAll('.task-admin-item')];
+                    if (all.indexOf(dragSrc) < all.indexOf(this)) this.after(dragSrc);
                     else this.before(dragSrc);
                 }
+            });
+
+            // ── Touch drag ────────────────────────────
+            let touchClone = null, touchOffX = 0, touchOffY = 0;
+
+            item.addEventListener('touchstart', function(e) {
+                dragSrc = this;
+                const touch = e.touches[0];
+                const rect = this.getBoundingClientRect();
+                touchOffX = touch.clientX - rect.left;
+                touchOffY = touch.clientY - rect.top;
+
+                // Создаём визуальный клон
+                touchClone = this.cloneNode(true);
+                touchClone.style.cssText = 'position:fixed;z-index:9999;pointer-events:none;opacity:0.85;' +
+                    'background:#16161f;border:1px solid rgba(157,95,255,0.4);border-radius:2px;' +
+                    'width:' + rect.width + 'px;padding:12px 14px;';
+                touchClone.style.left = (touch.clientX - touchOffX) + 'px';
+                touchClone.style.top  = (touch.clientY - touchOffY) + 'px';
+                document.body.appendChild(touchClone);
+                this.classList.add('dragging');
+            }, { passive: true });
+
+            item.addEventListener('touchmove', function(e) {
+                e.preventDefault();
+                const touch = e.touches[0];
+                if (touchClone) {
+                    touchClone.style.left = (touch.clientX - touchOffX) + 'px';
+                    touchClone.style.top  = (touch.clientY - touchOffY) + 'px';
+                }
+                // Подсвечиваем элемент под пальцем
+                list.querySelectorAll('.task-admin-item').forEach(i => i.classList.remove('drag-over'));
+                const el = document.elementFromPoint(touch.clientX, touch.clientY);
+                const target = el ? el.closest('.task-admin-item') : null;
+                if (target && target !== dragSrc) target.classList.add('drag-over');
+            }, { passive: false });
+
+            item.addEventListener('touchend', function(e) {
+                if (touchClone) { touchClone.remove(); touchClone = null; }
+                this.classList.remove('dragging');
+                list.querySelectorAll('.task-admin-item').forEach(i => i.classList.remove('drag-over'));
+
+                const touch = e.changedTouches[0];
+                const el = document.elementFromPoint(touch.clientX, touch.clientY);
+                const target = el ? el.closest('.task-admin-item') : null;
+                if (target && target !== dragSrc) {
+                    const all = [...list.querySelectorAll('.task-admin-item')];
+                    if (all.indexOf(dragSrc) < all.indexOf(target)) target.after(dragSrc);
+                    else target.before(dragSrc);
+                }
+                saveOrder();
             });
         });
     }
