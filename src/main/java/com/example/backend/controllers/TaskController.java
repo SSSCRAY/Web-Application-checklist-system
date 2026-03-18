@@ -9,6 +9,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/checklists/{checklistId}/tasks")
 public class TaskController {
@@ -49,6 +51,13 @@ public class TaskController {
     @PostMapping("/reset")
     public ResponseEntity<Void> resetAll(@PathVariable Integer checklistId) {
         taskService.resetAll(checklistId);
+        return ResponseEntity.noContent().build();
+    }
+    @PatchMapping("/reorder")
+    public ResponseEntity<Void> reorder(
+            @PathVariable Integer checklistId,
+            @RequestBody List<Integer> taskIds) {
+        taskService.reorder(checklistId, taskIds);
         return ResponseEntity.noContent().build();
     }
 }

@@ -81,4 +81,15 @@ public class TaskService {
         tasks.forEach(t -> t.setCompleted(false));
         taskRepository.saveAll(tasks);
     }
+
+    @Transactional
+    public void reorder(Integer checklistId, List<Integer> taskIds) {
+        checklistRepository.findById(checklistId)
+                .orElseThrow(() -> new RuntimeException("Checklist not found"));
+        for (int i = 0; i < taskIds.size(); i++) {
+            Task task = taskRepository.findById(taskIds.get(i))
+                    .orElseThrow(() -> new RuntimeException("Task not found"));
+            task.setSortOrder(i);
+        }
+    }
 }

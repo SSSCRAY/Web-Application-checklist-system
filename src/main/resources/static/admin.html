@@ -31,10 +31,12 @@
         .detail-panel::before { content:''; position:absolute; top:0;left:0;right:0; height:1px; background:linear-gradient(90deg,transparent,var(--purple-dim),transparent); }
         .detail-head { padding:22px 26px; border-bottom:1px solid var(--border2); display:flex; align-items:center; justify-content:space-between; gap:16px; }
         .detail-body { padding:22px 26px; }
-        .task-admin-item { display:flex; align-items:center; gap:12px; padding:12px 0; border-bottom:1px solid var(--border2); }
+        .task-admin-item { display:flex; align-items:center; gap:12px; padding:12px 0; border-bottom:1px solid var(--border2); cursor:default; }
         .task-admin-item:last-child { border-bottom:none; }
-        .task-admin-desc { flex:1; font-size:13px; letter-spacing:0; }
-        .task-admin-desc.done { color:var(--text-dim); }
+        .task-admin-item.dragging { opacity:.4; }
+        .task-admin-item.drag-over { border-top:2px solid var(--purple); }
+        .drag-handle { cursor:grab; color:var(--text-dim); font-size:14px; padding:0 4px; flex-shrink:0; user-select:none; }
+        .drag-handle:active { cursor:grabbing; }
         .empty-detail { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:80px 20px; color:var(--text-dim); }
         .empty-detail .icon { font-size:48px; opacity:.12; margin-bottom:16px; }
         .empty-detail p { font-size:12px; letter-spacing:.1em; }
@@ -259,14 +261,17 @@
             '<div class="progress-bar" style="margin-top:10px;max-width:300px"><div class="progress-fill" style="width:' + pct + '%"></div></div>' +
             '</div><button class="btn btn-primary btn-sm" onclick="openModal(\'taskModal\')">+ Задача</button></div>' +
             '<div class="detail-body">' +
-            (tasks.length ? tasks.map(t =>
-                '<div class="task-admin-item">' +
+            (tasks.length ? '<div id="taskDndList">' + tasks.map(t =>
+                '<div class="task-admin-item" data-id="' + t.id + '" draggable="true">' +
+                '<span class="drag-handle" title="Перетащить">⠿</span>' +
                 '<div class="task-check' + (t.completed?' checked':'') + '" onclick="toggleTask(' + t.id + ')" style="cursor:pointer"></div>' +
                 '<div class="task-admin-desc' + (t.completed?' done':'') + '">' + escHtml(t.description) + '</div>' +
                 '<div style="display:flex;gap:4px">' +
                 '<button class="btn btn-ghost btn-sm" onclick="openEditTask(' + t.id + ',\'' + escHtml(t.description).replace(/'/g,"\\'").replace(/\n/g,' ') + '\')">✎</button>' +
                 '<button class="btn btn-danger btn-sm" onclick="deleteTask(' + t.id + ')">✕</button></div></div>'
-            ).join('') : '<div class="empty"><p>Задач нет</p></div>') + '</div>';
+            ).join('') + '</div>' : '<div class="empty"><p>Задач нет</p></div>') + '</div>';
+        // Инициализируем drag-and-drop после рендера
+        setTimeout(initDnd, 0);
     }
 
     async function createChecklist() {
@@ -322,6 +327,49 @@
         if (!confirm('Удалить задачу?')) return;
         const res = await api.delete('/api/checklists/' + selectedCl.id + '/tasks/' + taskId);
         if (res.ok) { showToast('Задача удалена'); loadChecklists(); } else showToast('Ошибка', 'err');
+    }
+
+    // ── Drag and Drop ──────────────────────────────────────────
+    let dragSrc = null;
+    function initDnd() {
+        const list = document.getElementById('taskDndList');
+        if (!list) return;
+        const items = list.querySelectorAll('.task-admin-item');
+        items.forEach(item => {
+            item.addEventListener('dragstart', function(e) {
+                dragSrc = this;
+                this.classList.add('dragging');
+                e.dataTransfer.effectAllowed = 'move';
+            });
+            item.addEventListener('dragend', function() {
+                this.classList.remove('dragging');
+                list.querySelectorAll('.task-admin-item').forEach(i => i.classList.remove('drag-over'));
+                saveOrder();
+            });
+            item.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+                list.querySelectorAll('.task-admin-item').forEach(i => i.classList.remove('drag-over'));
+                if (this !== dragSrc) this.classList.add('drag-over');
+            });
+            item.addEventListener('drop', function(e) {
+                e.preventDefault();
+                if (dragSrc && this !== dragSrc) {
+                    const allItems = [...list.querySelectorAll('.task-admin-item')];
+                    const srcIdx  = allItems.indexOf(dragSrc);
+                    const destIdx = allItems.indexOf(this);
+                    if (srcIdx < destIdx) this.after(dragSrc);
+                    else this.before(dragSrc);
+                }
+            });
+        });
+    }
+
+    async function saveOrder() {
+        const list = document.getElementById('taskDndList');
+        if (!list || !selectedCl) return;
+        const ids = [...list.querySelectorAll('.task-admin-item')].map(el => parseInt(el.dataset.id));
+        await api.patch('/api/checklists/' + selectedCl.id + '/tasks/reorder', ids);
     }
 
     // ── Categories ──────────────────────────────────────────
